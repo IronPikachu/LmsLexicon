@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Lms.DATA.Data;
 using Lms.CORE.Entities;
+using AutoMapper;
+using Lms.CORE.Dto;
 
 namespace Lms.API.Controllers
 {
@@ -16,44 +18,53 @@ namespace Lms.API.Controllers
     public class ModulesController : ControllerBase
     {
         private readonly LmsContext _context;
+        private readonly IMapper _mapper;
 
-        public ModulesController(LmsContext context)
+        public ModulesController(LmsContext context, IMapper mapper)
         {
             _context = context;
+            _mapper = mapper;
         }
-
+        // CRUD - READ
         // GET: api/Modules
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Module>>> GetModule()
+        public async Task<ActionResult<IEnumerable<ModuleDto>>> GetModule()
         {
-            return await _context.Module.ToListAsync();
+            var moduleDto = await _mapper.ProjectTo<ModuleDto>(_context.Module).ToListAsync();
+            return Ok(moduleDto);
         }
-
+        // CRUD - READ
         // GET: api/Modules/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Module>> GetModule(int id)
+        public async Task<ActionResult<ModuleDto>> GetModule(int id)
         {
-            var @module = await _context.Module.FindAsync(id);
+            var module = await _context.Module.FindAsync(id);
 
-            if (@module == null)
+            if (module == null)
             {
-                return NotFound();
+                return NotFound(404);
             }
 
-            return @module;
-        }
+            var moduleDto = _mapper.Map<ModuleDto>(module);
 
+            return Ok(moduleDto);
+        }
+        // CRUD - UPDATE
         // PUT: api/Modules/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutModule(int id, Module @module)
+        public async Task<IActionResult> PutModule(int id, ModuleDto moduleDto)
         {
-            if (id != @module.Id)
+            var preModule = _context.Course.Find(id);
+
+            var module = (Module)_mapper.ProjectTo<Module>((IQueryable)moduleDto);
+
+            if (module.Id != preModule.Id)
             {
-                return BadRequest();
+                return BadRequest(400);
             }
 
-            _context.Entry(@module).State = EntityState.Modified;
+            _context.Entry(module).State = EntityState.Modified;
 
             try
             {
@@ -63,7 +74,7 @@ namespace Lms.API.Controllers
             {
                 if (!ModuleExists(id))
                 {
-                    return NotFound();
+                    return NotFound(404);
                 }
                 else
                 {
@@ -73,18 +84,20 @@ namespace Lms.API.Controllers
 
             return NoContent();
         }
-
+        // CRUD - CREATE
         // POST: api/Modules
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Module>> PostModule(Module @module)
+        public async Task<ActionResult<ModuleDto>> PostModule(ModuleDto moduleDto)
         {
-            _context.Module.Add(@module);
+            var module = (Module)_mapper.ProjectTo<Module>((IQueryable)moduleDto);
+
+            _context.Module.Add(module);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetModule", new { id = @module.Id }, @module);
+            return CreatedAtAction("GetCourse", new { id = module.Id }, module);
         }
-
+        // CRUD - DELETE
         // DELETE: api/Modules/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteModule(int id)
@@ -92,7 +105,7 @@ namespace Lms.API.Controllers
             var @module = await _context.Module.FindAsync(id);
             if (@module == null)
             {
-                return NotFound();
+                return NotFound(404);
             }
 
             _context.Module.Remove(@module);

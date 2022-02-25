@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Lms.DATA.Data;
 using Lms.CORE.Entities;
+using AutoMapper;
+using Lms.CORE.Dto;
 
 namespace Lms.API.Controllers
 {
@@ -16,41 +18,50 @@ namespace Lms.API.Controllers
     public class CoursesController : ControllerBase
     {
         private readonly LmsContext _context;
+        private readonly IMapper _mapper;
 
-        public CoursesController(LmsContext context)
+        public CoursesController(LmsContext context, IMapper mapper)
         {
             _context = context;
+            _mapper = mapper;
         }
-
+        // CRUD - READ
         // GET: api/Courses
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Course>>> GetCourse()
+        public async Task<ActionResult<IEnumerable<CourseDto>>> GetCourse()
         {
-            return await _context.Course.Include(c => c.Modules).ToListAsync();
+            var courseDto = await _mapper.ProjectTo<CourseDto>(_context.Course).ToListAsync();
+            return Ok(courseDto);
         }
-
+        // CRUD - READ
         // GET: api/Courses/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Course>> GetCourse(int id)
+        public async Task<ActionResult<CourseDto>> GetCourse(int id)
         {
-            var course = await _context.Course.FindAsync(id);
+            var course = await _context.Course.Include(c => c.Modules).FirstOrDefaultAsync(c => c.Id == id);
 
             if (course == null)
             {
-                return NotFound();
+                return NotFound(404);
             }
 
-            return course;
-        }
+            var courseDto = _mapper.Map<CourseDto>(course);
 
+            return Ok(courseDto);
+        }
+        // CRUD - UPDATE
         // PUT: api/Courses/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutCourse(int id, Course course)
+        public async Task<IActionResult> PutCourse(int id, CourseDto courseDto)
         {
-            if (id != course.Id)
+            var preCourse = _context.Course.Find(id);
+            
+            var course = (Course)_mapper.ProjectTo<Course>((IQueryable)courseDto);
+
+            if (course.Id != preCourse.Id)
             {
-                return BadRequest();
+                return BadRequest(400);
             }
 
             _context.Entry(course).State = EntityState.Modified;
@@ -63,7 +74,7 @@ namespace Lms.API.Controllers
             {
                 if (!CourseExists(id))
                 {
-                    return NotFound();
+                    return NotFound(404);
                 }
                 else
                 {
@@ -73,18 +84,20 @@ namespace Lms.API.Controllers
 
             return NoContent();
         }
-
+        // CRUD - CREATE
         // POST: api/Courses
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Course>> PostCourse(Course course)
+        public async Task<ActionResult<CourseDto>> PostCourse(CourseDto courseDto)
         {
+            var course = (Course)_mapper.ProjectTo<Course>((IQueryable)courseDto);
+
             _context.Course.Add(course);
             await _context.SaveChangesAsync();
 
             return CreatedAtAction("GetCourse", new { id = course.Id }, course);
         }
-
+        // CRUD - DELETE
         // DELETE: api/Courses/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCourse(int id)
@@ -92,7 +105,7 @@ namespace Lms.API.Controllers
             var course = await _context.Course.FindAsync(id);
             if (course == null)
             {
-                return NotFound();
+                return NotFound(404);
             }
 
             _context.Course.Remove(course);
