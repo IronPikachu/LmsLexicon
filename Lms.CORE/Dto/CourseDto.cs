@@ -7,8 +7,8 @@ using System.Threading.Tasks;
 namespace Lms.CORE.Dto;
 public class CourseDto
 {
-    public string Title { get; set; }
-    public DateTime StartTime { get; set; }
-    public DateTime EndDate => StartTime.AddMonths(3); // 3 months after startdate
+    public virtual string Title { get; set; }
+    public virtual DateTime StartTime { get; set; }
+    public virtual DateTime EndDate => StartTime.AddMonths(3); // 3 months after startdate
 }
 
